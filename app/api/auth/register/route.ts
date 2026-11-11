@@ -54,16 +54,22 @@ export async function POST(req: Request) {
     });
 
     if (error) {
+      const message = error.message.toLowerCase();
       const duplicate =
-        error.code === "user_already_exists" ||
-        error.message.toLowerCase().includes("already");
+        error.code === "user_already_exists" || message.includes("already");
+      const rateLimited =
+        error.status === 429 ||
+        error.code === "over_email_send_rate_limit" ||
+        message.includes("rate limit");
       return NextResponse.json(
         {
           error: duplicate
             ? "Bu e-posta zaten kayıtlı. Giriş yap."
-            : "Kayıt şu an tamamlanamadı. Tekrar dene.",
+            : rateLimited
+              ? "Onay e-postası şu an çok sık gönderiliyor. Bir süre sonra tekrar dene. Gelen kutuna da bak; mail gelmiş olabilir."
+              : "Kayıt şu an tamamlanamadı. Tekrar dene.",
         },
-        { status: duplicate ? 409 : 400 },
+        { status: duplicate ? 409 : rateLimited ? 429 : 400 },
       );
     }
 
