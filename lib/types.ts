@@ -1,58 +1,38 @@
-export type CampaignStatus = "pending" | "active" | "locked" | "frozen" | "failed";
-export type LineStatus = "waitlist" | "committed" | "overflow" | "forfeited";
+export type ProductStatus = "open" | "closed" | "soldout";
 
-export type Product = {
+export type CatalogProduct = {
   id: string;
   slug: string;
   name: string;
   short: string;
   image: string;
-  cost100: number;
   sizes: string[];
-  seedDemand: number;
-};
-
-export type User = {
-  id: string;
-  email: string;
-  passwordHash: string;
-  createdAt: string;
-};
-
-export type Line = {
-  id: string;
-  userId: string;
-  productId: string;
-  size: string;
-  qty: number;
-  status: LineStatus;
-  maxPrice: number | null;
-  paidAt: string | null;
-  payBy: string | null;
-  createdAt: string;
-};
-
-export type Store = {
-  users: User[];
-  items: Line[];
-  locks: Record<string, string>;
-  productImages: Record<string, { mime: string; v: number }>;
-};
-
-export type CampaignView = {
   demand: number;
-  overflow: number;
-  status: CampaignStatus;
-  currentPrice: number | null;
+  batch1: number;
+  batch2: number;
   priceAt70: number;
   priceAt100: number;
-  neededForActivation: number;
-  neededForMin: number;
-  paymentOpen: boolean;
-  payBy: string | null;
+  status: ProductStatus;
+  stock: number;
 };
 
-export type CatalogProduct = Product &
-  CampaignView & {
-    mine: Line[];
-  };
+export type DemandItem = {
+  productId: string;
+  productName: string;
+  image: string;
+  size: string;
+  qty: number;
+  batch: 1 | 2;
+  unitPrice: number | null;
+  priceAt70: number;
+  priceAt100: number;
+  batchCount: number;
+};
+
+export type Demand = {
+  id: string;
+  createdAt: string;
+  requesterName: string;
+  role: string;
+  items: DemandItem[];
+};

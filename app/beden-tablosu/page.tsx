@@ -31,7 +31,7 @@ export default async function Page() {
       </p>
       <h1 className="serif mt-1 text-5xl">Beden Tablosu</h1>
       <p className="mt-4 max-w-xl text-sm leading-relaxed text-[var(--muted)]">
-        TEVİT Drop giysileri ağır kumaş ve rahat kalıpla basılacak. Emin değilsen
+        TEV İnanç giysileri ağır kumaş ve rahat kalıpla basılacak. Emin değilsen
         bir beden büyük al.
       </p>
 

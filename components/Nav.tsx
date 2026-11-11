@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useApp } from "./Providers";
+import { clearNewDemand } from "@/lib/new-demand";
 
 const links = [
   { href: "/", label: "Anasayfa" },
@@ -14,67 +14,78 @@ const links = [
 export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, ready, refreshUser } = useApp();
-  const [count, setCount] = useState(0);
-  const home = pathname === "/";
-
-  useEffect(() => {
-    if (!user) {
-      setCount(0);
-      return;
-    }
-    let alive = true;
-    const load = async () => {
-      const res = await fetch("/api/cart", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
-      const n = (data.items ?? []).reduce(
-        (s: number, i: { qty: number }) => s + i.qty,
-        0,
-      );
-      if (alive) setCount(n);
-    };
-    void load();
-    const id = window.setInterval(load, 4000);
-    return () => {
-      alive = false;
-      window.clearInterval(id);
-    };
-  }, [user, pathname]);
+  const { user, ready, refreshUser, cartCount, cartNotice, theme, toggleTheme } = useApp();
 
   async function logout() {
+    clearNewDemand();
     await fetch("/api/auth/logout", { method: "POST" });
     await refreshUser();
     router.push("/");
   }
 
   return (
-    <header
-      className={`relative z-40 shrink-0 border-b border-[var(--line)] ${
-        home ? "bg-[var(--bg)]" : "bg-[var(--bg)]/95 backdrop-blur"
-      }`}
-    >
-      <div className="flex h-12 items-center justify-between px-3 md:h-14 md:px-5">
-        <Link href="/" className="serif text-[22px] leading-none tracking-[0.28em]">
+    <header className="relative z-40 shrink-0 border-b border-[var(--line)] bg-[var(--bg)]">
+      <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 md:min-h-14 md:px-5">
+        <Link
+          href="/"
+          onClick={() => clearNewDemand()}
+          className="serif text-[22px] leading-none tracking-[0.28em]"
+        >
           LAWINA
         </Link>
-        <nav className="flex items-center gap-4 text-[11px] tracking-[0.18em] uppercase md:gap-6 md:text-[12px]">
-          {links.map((l) => (
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tracking-[0.18em] uppercase md:gap-x-6 md:text-[12px]">
+          {links.map((link) =>
+            link.href === "/sepet" ? (
+              <span key={link.href} className="inline-flex items-center gap-2">
+                <Link
+                  href={link.href}
+                  className={
+                    pathname === link.href
+                      ? "text-[var(--ink)]"
+                      : "text-[var(--muted)] hover:text-[var(--ink)]"
+                  }
+                >
+                  {link.label}
+                  {cartCount > 0 ? (
+                    <span className="ml-1 text-[var(--copper-soft)]">({cartCount})</span>
+                  ) : null}
+                </Link>
+                {cartNotice ? (
+                  <span
+                    role="status"
+                    className="text-[10px] tracking-normal text-[var(--good)] normal-case"
+                  >
+                    {cartNotice}
+                  </span>
+                ) : null}
+              </span>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={link.href === "/" ? () => clearNewDemand() : undefined}
+                className={
+                  pathname === link.href
+                    ? "text-[var(--ink)]"
+                    : "text-[var(--muted)] hover:text-[var(--ink)]"
+                }
+              >
+                {link.label}
+              </Link>
+            ),
+          )}
+          {ready && user ? (
             <Link
-              key={l.href}
-              href={l.href}
+              href="/talepler"
               className={
-                pathname === l.href
+                pathname === "/talepler"
                   ? "text-[var(--ink)]"
                   : "text-[var(--muted)] hover:text-[var(--ink)]"
               }
             >
-              {l.label}
-              {l.href === "/sepet" && count > 0 ? (
-                <span className="ml-1 text-[var(--copper-soft)]">({count})</span>
-              ) : null}
+              Talepler
             </Link>
-          ))}
+          ) : null}
           {ready && user ? (
             <button
               onClick={() => void logout()}
@@ -94,8 +105,43 @@ export function Nav() {
               Giriş
             </Link>
           )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "light" ? "Karanlık tema" : "Açık tema"}
+            className="text-[var(--muted)] hover:text-[var(--ink)]"
+          >
+            {theme === "light" ? <MoonIcon /> : <SunIcon />}
+          </button>
         </nav>
       </div>
     </header>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.4" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M8 1.4v1.6M8 13v1.6M1.4 8h1.6M13 8h1.6M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M9.2 1.8A5.6 5.6 0 1 0 14.2 9 4.4 4.4 0 0 1 9.2 1.8Z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

@@ -11,6 +11,25 @@
   --copper-soft: #e2b08a;
   --good: #9dcb7c;
   --danger: #d98973;
+  --btn: #f3eee4;
+  --btn-ink: #0b0a08;
+  --well: #14120f;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4efe6;
+  --card: #fffdf8;
+  --card-2: #f7f1e7;
+  --ink: #1c1612;
+  --muted: #6f675d;
+  --line: rgba(28, 22, 18, 0.12);
+  --copper: #a85b32;
+  --copper-soft: #8a4e2c;
+  --good: #3f7a32;
+  --danger: #a33b2b;
+  --btn: #1c1612;
+  --btn-ink: #f4efe6;
+  --well: #14120f;
 }
 
 * {
@@ -42,6 +61,20 @@ input {
 
 .serif {
   font-family: var(--font-serif), Georgia, serif;
+}
+
+.btn {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+}
+
+:root[data-theme="light"] .grain {
+  opacity: 0.05;
+  mix-blend-mode: multiply;
 }
 
 .home-lock {

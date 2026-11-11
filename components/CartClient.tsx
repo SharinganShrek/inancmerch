@@ -1,309 +1,182 @@
 "use client";
 
-import { formatRemaining, formatTL, payableForLine } from "@/lib/pricing";
-import type { CatalogProduct, Line } from "@/lib/types";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useApp } from "@/components/Providers";
-
-type CartLine = Line & { product?: CatalogProduct };
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { clearNewDemand, startNewDemand } from "@/lib/new-demand";
+import { formatTL } from "@/lib/pricing";
+import type { CatalogProduct } from "@/lib/types";
+import { useApp } from "./Providers";
 
 export function CartClient() {
-  const { user, ready, toast } = useApp();
-  const [items, setItems] = useState<CartLine[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!user) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    const res = await fetch("/api/cart", { cache: "no-store" });
-    const data = await res.json();
-    setItems(data.items ?? []);
-    setLoading(false);
-  }, [user]);
+  const { cart, setCartQty, removeFromCart, clearCart, toast, user } = useApp();
+  const router = useRouter();
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!ready) return;
-    void load();
-  }, [ready, load]);
+    let alive = true;
+    void fetch("/api/catalog", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (alive && Array.isArray(data.products)) setProducts(data.products);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-  async function remove(id: string) {
-    const res = await fetch(`/api/cart?id=${id}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok) {
-      toast(data.error ?? "Silinemedi.");
+  const lines = cart.map((item) => ({
+    ...item,
+    product: products.find((product) => product.id === item.productId),
+  }));
+
+  async function submit() {
+    if (!cart.length || busy) return;
+    if (!user) {
+      router.push("/giris?next=/sepet");
       return;
     }
-    toast("Talebin geri çekildi. Stok yeniden açıldı.");
-    void load();
-  }
-
-  async function commit(ids?: string[]) {
-    const res = await fetch("/api/cart/commit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      toast(data.error ?? "Kesinleştirilemedi.");
-      return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/demands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((item) => ({
+            productId: item.productId,
+            size: item.size,
+            qty: item.qty,
+          })),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast(data.error ?? "Talep gönderilemedi.");
+        return;
+      }
+      clearCart();
+      clearNewDemand();
+      toast("Talebin kayda geçti.");
+      router.push("/talepler");
+      router.refresh();
+    } catch {
+      toast("Bağlantı hatası. Tekrar dene.");
+    } finally {
+      setBusy(false);
     }
-    toast("Siparişin kilitlendi. Fiyatın artık artamaz, yalnızca düşebilir.");
-    void load();
   }
-
-  async function pay(id: string) {
-    const res = await fetch("/api/cart/pay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      toast(data.error ?? "Ödeme alınamadı.");
-      return;
-    }
-    toast(`Ödeme alındı: ${formatTL(data.amount)}. Üretim, herkes ödeyince başlar.`);
-    void load();
-  }
-
-  if (!ready || loading) {
-    return (
-      <main className="px-5 py-16 text-center text-[var(--muted)]">Yükleniyor…</main>
-    );
-  }
-
-  if (!user) {
-    return (
-      <main className="mx-auto w-[min(92vw,560px)] py-16 text-center">
-        <h1 className="serif text-5xl">Sepet</h1>
-        <p className="mt-4 text-[var(--muted)]">
-          Sepeti görmek için e-posta ve şifrenle gir.
-        </p>
-        <Link
-          href="/giris?next=/sepet"
-          className="mt-6 inline-block bg-[#f3eee4] px-6 py-3 text-[12px] tracking-[0.2em] text-[#0b0a08] uppercase"
-        >
-          Giriş yap
-        </Link>
-      </main>
-    );
-  }
-
-  const waitlist = items.filter((i) => i.status === "waitlist");
-  const committed = items.filter((i) => i.status === "committed");
-  const overflow = items.filter((i) => i.status === "overflow");
-  const forfeited = items.filter((i) => i.status === "forfeited");
-  const payable = committed
-    .filter((i) => !i.paidAt)
-    .reduce((s, i) => {
-      const unit = payableForLine(i.maxPrice, i.product?.currentPrice ?? i.maxPrice);
-      return s + (unit ?? 0) * i.qty;
-    }, 0);
-  const paidSum = committed
-    .filter((i) => i.paidAt)
-    .reduce((s, i) => {
-      const unit = payableForLine(i.maxPrice, i.product?.currentPrice ?? i.maxPrice);
-      return s + (unit ?? 0) * i.qty;
-    }, 0);
 
   return (
-    <main className="mx-auto w-[min(96vw,920px)] px-4 py-8">
+    <main className="mx-auto w-[min(96vw,760px)] px-4 py-10">
       <p className="text-[11px] tracking-[0.2em] text-[var(--copper-soft)] uppercase">
-        Kalabalık aldıkça ucuzlar
+        Sepet
       </p>
-      <h1 className="serif mt-1 text-5xl">Sepet</h1>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
-        Kesinleşen siparişler silinemez — fiyatın sonradan artmasın diye. 70 kişiye
-        ulaşmayan ürün üretilmez. Kampanya 100&apos;e veya 8 Ekim&apos;e kilitlenince
-        48 saat ödeme penceresi açılır; ödemeyenlerin yeri yedek listeye geçer.
+      <h1 className="serif mt-1 text-5xl">Sipariş özeti</h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--muted)]">
+        Gönderince talep kayda geçer ve ürün sayaçları güncellenir. Ödeme bu
+        adımda alınmaz.
       </p>
 
-      {items.length === 0 ? (
-        <div className="mt-12 border border-[var(--line)] p-10 text-center">
-          <p className="text-[var(--muted)]">Sepetin boş.</p>
-          <Link href="/" className="mt-4 inline-block underline">
-            Dört ürüne bak
-          </Link>
+      {lines.length === 0 ? (
+        <div className="mt-10">
+          <p className="text-sm text-[var(--muted)]">Sepetin boş.</p>
+          <button
+            type="button"
+            onClick={() => {
+              startNewDemand();
+              router.push("/");
+            }}
+            className="btn mt-5 px-5 py-3 text-[12px] tracking-[0.16em] uppercase"
+          >
+            Ürünlere dön
+          </button>
         </div>
-      ) : null}
-
-      {committed.length > 0 ? (
-        <Section title="Kesinleşen siparişler" hint="Silinemez. Tavan fiyat kilitli. Kapora yok; tutar güncel fiyattan çekilir.">
-          {committed.map((i) => (
-            <LineRow key={i.id} line={i} onPay={() => void pay(i.id)} />
-          ))}
-          <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-[var(--line)] pt-4">
-            <p className="text-sm text-[var(--muted)]">
-              {paidSum > 0 ? `Ödenen ${formatTL(paidSum)} · ` : null}
-              Kalan üst sınır
+      ) : (
+        <>
+          <ul className="mt-8 divide-y divide-[var(--line)] border-y border-[var(--line)]">
+            {lines.map((line) => (
+              <li key={`${line.productId}-${line.size}`} className="flex gap-4 py-4">
+                <div className="h-24 w-20 shrink-0 bg-[var(--well)]">
+                  {line.product ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={line.product.image}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="serif text-2xl leading-none">
+                        {line.product?.name ?? "Ürün"}
+                      </h2>
+                      <p className="mt-1 text-[12px] tracking-[0.14em] text-[var(--muted)] uppercase">
+                        {line.size}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(line.productId, line.size)}
+                      className="text-[11px] tracking-[0.14em] text-[var(--muted)] uppercase"
+                    >
+                      Çıkar
+                    </button>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center border border-[var(--line)] text-sm">
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-[var(--muted)]"
+                        onClick={() =>
+                          setCartQty(line.productId, line.size, line.qty - 1)
+                        }
+                      >
+                        −
+                      </button>
+                      <span className="w-6 text-center">{line.qty}</span>
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-[var(--muted)]"
+                        onClick={() =>
+                          setCartQty(line.productId, line.size, line.qty + 1)
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                    <p className="text-right text-[13px] text-[var(--copper-soft)]">
+                      {line.product
+                        ? `Tahmini ${formatTL(line.product.priceAt100)} – ${formatTL(line.product.priceAt70)}`
+                        : "Tahmini fiyat"}
+                    </p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit()}
+            className="btn mt-6 w-full py-3 text-[12px] tracking-[0.2em]"
+          >
+            {busy ? "Gönderiliyor…" : "TALEP GÖNDER"}
+          </button>
+          {!user ? (
+            <p className="mt-3 text-center text-[12px] text-[var(--muted)]">
+              Göndermek için{" "}
+              <Link href="/giris?next=/sepet" className="underline">
+                giriş yap
+              </Link>
+              .
             </p>
-            <p className="serif text-3xl">{formatTL(payable)}</p>
-          </div>
-        </Section>
-      ) : null}
-
-      {waitlist.length > 0 ? (
-        <Section
-          title="Talep / waitlist"
-          hint="70 eşiği henüz yoksa geri çekebilirsin. Eşiğe ulaşanlar kesinleştirilir."
-        >
-          {waitlist.map((i) => (
-            <LineRow
-              key={i.id}
-              line={i}
-              onRemove={() => void remove(i.id)}
-              onCommit={
-                i.product && i.product.status !== "pending"
-                  ? () => void commit([i.id])
-                  : undefined
-              }
-            />
-          ))}
-        </Section>
-      ) : null}
-
-      {overflow.length > 0 ? (
-        <Section
-          title="Yedek liste"
-          hint="Ana 100 kişi doldu. Ödeme yapmayan olursa sıran gelir — kapora yok."
-        >
-          {overflow.map((i) => (
-            <LineRow key={i.id} line={i} onRemove={() => void remove(i.id)} />
-          ))}
-        </Section>
-      ) : null}
-
-      {forfeited.length > 0 ? (
-        <Section
-          title="Ödenmedi, yer kaybedildi"
-          hint="48 saat içinde ödenmeyen sipariş yedek listeye geçti."
-        >
-          {forfeited.map((i) => (
-            <LineRow key={i.id} line={i} />
-          ))}
-        </Section>
-      ) : null}
+          ) : null}
+        </>
+      )}
     </main>
-  );
-}
-
-function Section({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="mt-8">
-      <h2 className="serif text-2xl">{title}</h2>
-      <p className="mt-1 text-[12px] text-[var(--muted)]">{hint}</p>
-      <div className="mt-4 space-y-3">{children}</div>
-    </section>
-  );
-}
-
-function LineRow({
-  line,
-  onRemove,
-  onCommit,
-  onPay,
-}: {
-  line: CartLine;
-  onRemove?: () => void;
-  onCommit?: () => void;
-  onPay?: () => void;
-}) {
-  const p = line.product;
-  const unit = payableForLine(line.maxPrice, p?.currentPrice ?? line.maxPrice);
-  const canPay =
-    Boolean(onPay) &&
-    line.status === "committed" &&
-    !line.paidAt &&
-    unit != null;
-  return (
-    <div className="grid grid-cols-[72px_1fr_auto] gap-3 border border-[var(--line)] bg-[var(--card)] p-3 md:grid-cols-[88px_1fr_auto]">
-      <div className="overflow-hidden bg-black">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={p?.image} alt="" className="h-full w-full object-cover" />
-      </div>
-      <div>
-        <p className="serif text-xl leading-none">{p?.name ?? "Ürün"}</p>
-        <p className="mt-1 text-[12px] text-[var(--muted)]">
-          {line.size} · {line.qty} adet
-        </p>
-        {line.status === "committed" && unit != null ? (
-          <p className="mt-2 text-[13px]">
-            Tavanın: {formatTL(line.maxPrice ?? unit)}{" "}
-            {p?.currentPrice != null &&
-            line.maxPrice != null &&
-            p.currentPrice < line.maxPrice ? (
-              <span className="text-[var(--good)]">
-                · şu an {formatTL(p.currentPrice)}
-              </span>
-            ) : null}
-          </p>
-        ) : p?.status === "pending" ? (
-          <p className="mt-2 text-[12px] text-[var(--muted)]">
-            {p.demand}/70 · üretime girerse maks {formatTL(p.priceAt70)}
-          </p>
-        ) : p?.currentPrice != null ? (
-          <p className="mt-2 text-[13px]">Güncel {formatTL(p.currentPrice)}</p>
-        ) : null}
-        {line.paidAt ? (
-          <p className="mt-1 text-[12px] text-[var(--good)]">Ödendi</p>
-        ) : line.payBy && line.status === "committed" ? (
-          <p className="mt-1 text-[12px] text-[var(--copper-soft)]">
-            Ödeme penceresi: {formatRemaining(line.payBy)}
-          </p>
-        ) : line.status === "committed" && p && !p.paymentOpen ? (
-          <p className="mt-1 text-[12px] text-[var(--muted)]">
-            Zorunlu ödeme, fiyat kilitlenince 48 saat açılır. Şimdi de
-            ödeyebilirsin — çekilecek tutar yalnızca düşer.
-          </p>
-        ) : null}
-      </div>
-      <div className="flex flex-col items-end justify-between gap-2">
-        {canPay ? (
-          <button
-            onClick={onPay}
-            className="bg-[#f3eee4] px-3 py-1.5 text-[10px] tracking-[0.14em] text-[#0b0a08] uppercase"
-          >
-            {formatTL(unit! * line.qty)} öde
-          </button>
-        ) : null}
-        {onCommit ? (
-          <button
-            onClick={onCommit}
-            className="bg-[#f3eee4] px-3 py-1.5 text-[10px] tracking-[0.14em] text-[#0b0a08] uppercase"
-          >
-            Kesinleştir
-          </button>
-        ) : null}
-        {onRemove ? (
-          <button
-            onClick={onRemove}
-            className="text-[11px] text-[var(--muted)] underline"
-          >
-            Çıkar
-          </button>
-        ) : line.status === "committed" && !canPay ? (
-          <span className="text-[10px] tracking-[0.12em] text-[var(--muted)] uppercase">
-            {line.paidAt ? "Ödendi" : "Kilitli"}
-          </span>
-        ) : line.status === "forfeited" ? (
-          <span className="text-[10px] tracking-[0.12em] text-[var(--danger)] uppercase">
-            Kaçırıldı
-          </span>
-        ) : null}
-      </div>
-    </div>
   );
 }
