@@ -17,7 +17,7 @@ const sans = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "LAWINA — TEV İnanç",
+  title: "TEV İnanç Merch",
   description:
     "Kalabalık aldıkça fiyat düşer. Aralık, 70 kişi ile 100 kişi arasındaki tahmini fiyattır.",
 };

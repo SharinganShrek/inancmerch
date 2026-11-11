@@ -29,9 +29,9 @@ export function Nav() {
         <Link
           href="/"
           onClick={() => clearNewDemand()}
-          className="serif text-[22px] leading-none tracking-[0.28em]"
+          className="serif text-[18px] leading-none tracking-[0.04em] md:text-[22px]"
         >
-          LAWINA
+          TEV İnanç Merch
         </Link>
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tracking-[0.18em] uppercase md:gap-x-6 md:text-[12px]">
           {links.map((link) =>
