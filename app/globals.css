@@ -66,6 +66,12 @@ input {
 .btn {
   background: var(--btn);
   color: var(--btn-ink);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.btn-added {
+  background: var(--copper);
+  color: #1c1612;
 }
 
 .btn:disabled {

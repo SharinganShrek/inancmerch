@@ -48,8 +48,8 @@ export function TaleplerClient() {
       </p>
       <h1 className="serif mt-1 text-5xl">Talep özeti</h1>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--muted)]">
-        70 kişi dolmadan fiyat aralık olarak görünür. Grup 70 kişiye ulaşınca
-        güncel fiyat yazılır ve talep arttıkça düşer.
+        Fiyat aralığı durur. Grup 70 talebe ulaşınca güncel fiyat da yanında
+        yazar ve talep arttıkça düşer.
       </p>
 
       {ready && !user ? (
@@ -85,14 +85,21 @@ export function TaleplerClient() {
                   <div className="min-w-0 flex-1">
                     <p className="serif text-xl leading-none">{item.productName}</p>
                     <p className="mt-1 text-[11px] tracking-[0.14em] text-[var(--muted)] uppercase">
-                      {item.size} · {item.qty} adet ·{" "}
-                      {item.batch === 1 ? "İlk 100" : "Sonraki grup"}
+                      {item.size} · {item.qty} adet · {item.batch === 1 ? "İlk 100" : "Sıra"}
                     </p>
-                    <p className="mt-1 text-[13px] text-[var(--copper-soft)]">
-                      {item.unitPrice == null
-                        ? `Tahmini ${formatTL(item.priceAt100)} – ${formatTL(item.priceAt70)}`
-                        : `Güncel ${formatTL(item.unitPrice)} · toplam ${formatTL(item.unitPrice * item.qty)}`}
+                    <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-[var(--copper-soft)]">
+                      {item.unitPrice != null ? <span>Şu an {formatTL(item.unitPrice)}</span> : null}
+                      <span>
+                        {item.unitPrice == null ? "Tahmini" : "Aralık"}{" "}
+                        {formatTL(item.priceAt100)} – {formatTL(item.priceAt70)}
+                      </span>
                     </p>
+                    {item.batch === 2 && item.batchCount < 70 ? (
+                      <p className="mt-1 text-[12px] leading-snug text-[var(--muted)]">
+                        Ürün talebinizin karşılanması için {70 - item.batchCount} ürün
+                        talebi kaldı.
+                      </p>
+                    ) : null}
                   </div>
                 </li>
               ))}

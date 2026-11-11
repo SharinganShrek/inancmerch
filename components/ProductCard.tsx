@@ -1,9 +1,11 @@
 "use client";
 
 import type { CatalogProduct } from "@/lib/types";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { useApp } from "./Providers";
+
+const GROUP = 100;
 
 export function ProductCard({ product }: { product: CatalogProduct }) {
   const { addToCart } = useApp();
@@ -11,15 +13,24 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
     product.sizes.includes("M") ? "M" : (product.sizes[0] ?? ""),
   );
   const [qty, setQty] = useState(1);
+  const [added, setAdded] = useState(0);
   const closed = product.status !== "open";
+  const queued = product.demand >= GROUP;
   const progress = useMemo(
-    () => Math.min(100, (product.demand / Math.max(1, product.stock)) * 100),
-    [product.demand, product.stock],
+    () => Math.min(100, (Math.min(product.demand, GROUP) / GROUP) * 100),
+    [product.demand],
   );
+
+  useEffect(() => {
+    if (!added) return;
+    const id = window.setTimeout(() => setAdded(0), 2200);
+    return () => window.clearTimeout(id);
+  }, [added]);
 
   function add() {
     if (closed || !size) return;
     addToCart({ productId: product.id, size, qty });
+    setAdded((current) => current + 1);
   }
 
   return (
@@ -45,13 +56,20 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
         <h2 className="serif truncate text-[18px] leading-none md:text-[22px]">{product.name}</h2>
         <p className="mt-1 text-[10px] text-[var(--muted)]">{product.short}</p>
 
-        <div className="mt-1 flex items-end justify-between gap-2">
-          <p className="whitespace-nowrap">
-            <span className="serif text-[22px] leading-none md:text-[26px]">
-              <AnimatedNumber value={product.demand} />
-            </span>
-            <span className="text-[var(--muted)]"> / {product.stock}</span>
-          </p>
+        <div className="mt-1 flex items-start justify-between gap-2">
+          <div>
+            <p className="whitespace-nowrap">
+              <span className="serif text-[22px] leading-none md:text-[26px]">
+                <AnimatedNumber value={Math.min(product.demand, GROUP)} />
+              </span>
+              <span className="text-[var(--muted)]"> / {GROUP}</span>
+            </p>
+            {queued ? (
+              <p className="mt-0.5 text-[11px] text-[var(--copper-soft)]">
+                sıra: <AnimatedNumber value={product.batch2} />/{GROUP}
+              </p>
+            ) : null}
+          </div>
           <p className="text-right leading-none text-[var(--copper-soft)]">
             <span className="serif text-[16px] md:text-[18px]">
               <AnimatedNumber value={product.priceAt100} />
@@ -107,13 +125,19 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
           type="button"
           disabled={closed}
           onClick={add}
-          className="btn mt-1.5 w-full py-1.5 text-[11px]"
+          className={`btn mt-1.5 w-full py-1.5 text-[11px] ${added ? "btn-added" : ""}`}
         >
           {product.status === "soldout"
             ? "Tükendi"
             : product.status === "closed"
               ? "Talep kapandı"
-              : "Sepete ekle"}
+              : added
+                ? queued
+                  ? "Sıraya girildi"
+                  : "Sepete eklendi"
+                : queued
+                  ? "Sıraya gir"
+                  : "Sepete ekle"}
         </button>
       </div>
     </article>
