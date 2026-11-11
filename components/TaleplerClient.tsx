@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { deliveryLabel } from "@/lib/delivery";
 import { startNewDemand } from "@/lib/new-demand";
 import { formatTL } from "@/lib/pricing";
 import { roleLabel } from "@/lib/roles";
@@ -75,6 +76,11 @@ export function TaleplerClient() {
                 {demand.requesterName} · {roleLabel(demand.role)}
               </p>
             </div>
+            {demand.delivery ? (
+              <p className="mt-3 text-[13px] leading-snug text-[var(--ink)]">
+                {deliveryLabel(demand.delivery)}
+              </p>
+            ) : null}
             <ul className="mt-4 divide-y divide-[var(--line)]">
               {demand.items.map((item, itemIndex) => (
                 <li key={`${item.productId}-${item.size}-${item.batch}-${itemIndex}`} className="flex gap-3 py-3">

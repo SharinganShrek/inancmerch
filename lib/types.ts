@@ -34,5 +34,6 @@ export type Demand = {
   createdAt: string;
   requesterName: string;
   role: string;
+  delivery: "okul" | "kargo" | null;
   items: DemandItem[];
 };

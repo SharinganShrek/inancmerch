@@ -10,6 +10,10 @@ export async function GET() {
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
     items?: unknown;
+    delivery?: unknown;
   } | null;
-  return rpc("submit_demand", { p_items: body?.items ?? [] });
+  return rpc("submit_demand", {
+    p_items: body?.items ?? [],
+    p_delivery: typeof body?.delivery === "string" ? body.delivery : null,
+  });
 }

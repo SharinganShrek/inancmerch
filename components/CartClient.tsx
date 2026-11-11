@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { DELIVERIES, type DeliveryId } from "@/lib/delivery";
 import { clearNewDemand, startNewDemand } from "@/lib/new-demand";
 import { formatTL } from "@/lib/pricing";
 import type { CatalogProduct } from "@/lib/types";
@@ -12,6 +13,9 @@ export function CartClient() {
   const { cart, setCartQty, removeFromCart, clearCart, toast, user } = useApp();
   const router = useRouter();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [role, setRole] = useState<string | null>(null);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [delivery, setDelivery] = useState<DeliveryId | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -32,7 +36,46 @@ export function CartClient() {
     product: products.find((product) => product.id === item.productId),
   }));
 
-  async function submit() {
+  useEffect(() => {
+    if (!user) {
+      setRole(null);
+      return;
+    }
+    let alive = true;
+    void fetch("/api/profile", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (alive) setRole(typeof data.profile?.role === "string" ? data.profile.role : null);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [user]);
+
+  async function beginSubmit() {
+    if (!cart.length || busy) return;
+    if (!user) {
+      router.push("/giris?next=/sepet");
+      return;
+    }
+    let current = role;
+    if (!current) {
+      const res = await fetch("/api/profile", { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as {
+        profile?: { role?: string };
+      };
+      current = typeof data.profile?.role === "string" ? data.profile.role : null;
+      setRole(current);
+    }
+    if (current === "mezun") {
+      setDeliveryOpen(true);
+      return;
+    }
+    void submit(null);
+  }
+
+  async function submit(choice: DeliveryId | null) {
     if (!cart.length || busy) return;
     if (!user) {
       router.push("/giris?next=/sepet");
@@ -49,6 +92,7 @@ export function CartClient() {
             size: item.size,
             qty: item.qty,
           })),
+          delivery: choice,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -58,6 +102,7 @@ export function CartClient() {
       }
       clearCart();
       clearNewDemand();
+      setDeliveryOpen(false);
       toast("Talebin kayda geçti.");
       router.push("/talepler");
       router.refresh();
@@ -161,11 +206,65 @@ export function CartClient() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => void submit()}
+            onClick={() => void beginSubmit()}
             className="btn mt-6 w-full py-3 text-[12px] tracking-[0.2em]"
           >
             {busy ? "Gönderiliyor…" : "TALEP GÖNDER"}
           </button>
+          {deliveryOpen ? (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+              onClick={() => {
+                if (!busy) setDeliveryOpen(false);
+              }}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delivery-title"
+                className="w-full max-w-md border border-[var(--line)] bg-[var(--card)] p-5"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h2 id="delivery-title" className="serif text-3xl">
+                  Teslim
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+                  Talebi göndermeden önce ürünleri nasıl alacağını seç.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {DELIVERIES.map((option) => {
+                    const selected = delivery === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setDelivery(option.id)}
+                        className={`w-full border px-3 py-3 text-left text-[13px] leading-snug ${
+                          selected
+                            ? "border-[var(--copper)] bg-[var(--card-2)] text-[var(--ink)]"
+                            : "border-[var(--line)] text-[var(--muted)]"
+                        }`}
+                      >
+                        {option.label}
+                        {"note" in option ? (
+                          <span className="mt-1 block text-[12px]">({option.note})</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  disabled={!delivery || busy}
+                  onClick={() => void submit(delivery)}
+                  className="btn mt-5 w-full py-3 text-[12px] tracking-[0.2em] disabled:opacity-40"
+                >
+                  {busy ? "Gönderiliyor…" : "TALEP GÖNDER"}
+                </button>
+              </div>
+            </div>
+          ) : null}
           {!user ? (
             <p className="mt-3 text-center text-[12px] text-[var(--muted)]">
               Göndermek için{" "}
