@@ -8,6 +8,32 @@ import { useApp } from "./Providers";
 
 const GROUP = 100;
 
+function RangePrices({
+  priceAt100,
+  priceAt70,
+}: {
+  priceAt100: number;
+  priceAt70: number;
+}) {
+  return (
+    <div className="flex w-fit items-start gap-1.5 text-center leading-none">
+      <div>
+        <p className="serif text-[13px] text-[var(--ink)] md:text-[15px]">
+          <AnimatedNumber value={priceAt100} />
+        </p>
+        <p className="mt-0.5 whitespace-nowrap text-[10px] leading-tight text-[var(--muted)]">100 kişide</p>
+      </div>
+      <span className="pt-0.5 text-[10px] text-[var(--muted)]">–</span>
+      <div>
+        <p className="serif text-[13px] text-[var(--ink)] md:text-[15px]">
+          <AnimatedNumber value={priceAt70} />
+        </p>
+        <p className="mt-0.5 whitespace-nowrap text-[10px] leading-tight text-[var(--muted)]">70 kişide</p>
+      </div>
+    </div>
+  );
+}
+
 export function ProductCard({ product }: { product: CatalogProduct }) {
   const { addToCart } = useApp();
   const [size, setSize] = useState(
@@ -71,27 +97,19 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
               </p>
             ) : null}
           </div>
-          <p className="text-right leading-none text-[var(--copper-soft)]">
-            <span className="serif text-[16px] md:text-[18px]">
-              <AnimatedNumber value={product.priceAt100} />
-              <span className="mx-0.5">–</span>
-              <AnimatedNumber value={product.priceAt70} />
-            </span>
-            <span className="ml-1 text-[10px]">TL</span>
-          </p>
+          {current != null ? (
+            <p className="shrink-0 text-right leading-none text-[var(--copper-soft)]">
+              <span className="text-[10px]">Şu an </span>
+              <span className="serif text-[16px] md:text-[18px]">
+                <AnimatedNumber value={current} />
+              </span>
+              <span className="ml-1 text-[10px]">TL</span>
+            </p>
+          ) : null}
         </div>
-        {current != null ? (
-          <p className="mt-0.5 text-right text-[11px] leading-none text-[var(--ink)]">
-            Şu an{" "}
-            <span className="serif text-[15px] md:text-[17px]">
-              <AnimatedNumber value={current} />
-            </span>
-            <span className="ml-1 text-[10px] text-[var(--muted)]">TL</span>
-          </p>
-        ) : null}
-        <p className="mt-0.5 text-right text-[10px] text-[var(--muted)]">
-          100 kişide – 70 kişide
-        </p>
+        <div className="mt-1 flex justify-end">
+          <RangePrices priceAt100={product.priceAt100} priceAt70={product.priceAt70} />
+        </div>
 
         <div className="mt-1.5 h-1 overflow-hidden bg-[var(--line)]">
           <div className="bar-fill h-full bg-[var(--copper)]" style={{ width: `${progress}%` }} />
