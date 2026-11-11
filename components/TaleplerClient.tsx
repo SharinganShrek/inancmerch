@@ -78,7 +78,7 @@ export function TaleplerClient() {
             <ul className="mt-4 divide-y divide-[var(--line)]">
               {demand.items.map((item, itemIndex) => (
                 <li key={`${item.productId}-${item.size}-${item.batch}-${itemIndex}`} className="flex gap-3 py-3">
-                  <div className="h-16 w-14 shrink-0 bg-[var(--well)]">
+                  <div className="h-16 w-14 shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.image} alt="" className="h-full w-full object-contain" />
                   </div>

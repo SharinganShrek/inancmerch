@@ -98,7 +98,7 @@ export function CartClient() {
           <ul className="mt-8 divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {lines.map((line) => (
               <li key={`${line.productId}-${line.size}`} className="flex gap-4 py-4">
-                <div className="h-24 w-20 shrink-0 bg-[var(--well)]">
+                <div className="h-24 w-20 shrink-0">
                   {line.product ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

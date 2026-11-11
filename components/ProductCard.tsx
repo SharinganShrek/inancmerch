@@ -1,6 +1,7 @@
 "use client";
 
 import type { CatalogProduct } from "@/lib/types";
+import { spotPrice } from "@/lib/pricing";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { useApp } from "./Providers";
@@ -16,6 +17,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
   const [added, setAdded] = useState(0);
   const closed = product.status !== "open";
   const queued = product.demand >= GROUP;
+  const current = spotPrice(product);
   const progress = useMemo(
     () => Math.min(100, (Math.min(product.demand, GROUP) / GROUP) * 100),
     [product.demand],
@@ -35,14 +37,13 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
 
   return (
     <article className="flex h-full min-h-0 flex-col overflow-hidden border border-[var(--line)] bg-[var(--card)]">
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-[var(--well)]">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.image}
           alt={product.name}
           className="absolute inset-0 z-[1] h-full w-full object-contain object-center"
         />
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_50%_42%,transparent_42%,rgba(11,10,8,0.55)_100%)]" />
         {closed ? (
           <div className="absolute right-2 top-2 z-[3]">
             <span className="bg-black/55 px-2 py-1 text-[10px] tracking-[0.14em] text-white uppercase">
@@ -79,6 +80,15 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
             <span className="ml-1 text-[10px]">TL</span>
           </p>
         </div>
+        {current != null ? (
+          <p className="mt-0.5 text-right text-[11px] leading-none text-[var(--ink)]">
+            Şu an{" "}
+            <span className="serif text-[15px] md:text-[17px]">
+              <AnimatedNumber value={current} />
+            </span>
+            <span className="ml-1 text-[10px] text-[var(--muted)]">TL</span>
+          </p>
+        ) : null}
         <p className="mt-0.5 text-right text-[10px] text-[var(--muted)]">
           100 kişide – 70 kişide
         </p>
