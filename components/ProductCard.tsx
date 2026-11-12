@@ -62,8 +62,8 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
   }
 
   return (
-    <article className="flex h-full min-h-0 flex-col overflow-hidden border border-[var(--line)] bg-[var(--card)]">
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+    <article className="flex flex-col overflow-hidden border border-[var(--line)] bg-[var(--card)] md:h-full md:min-h-0">
+      <div className="relative aspect-[4/5] w-full shrink-0 overflow-hidden md:aspect-auto md:min-h-0 md:flex-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.image}

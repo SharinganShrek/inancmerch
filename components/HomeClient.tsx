@@ -23,7 +23,7 @@ export function HomeClient({ initialProducts }: { initialProducts: CatalogProduc
   }, [load]);
 
   return (
-    <main className="flex h-full flex-col overflow-hidden">
+    <main className="flex flex-col md:h-full md:overflow-hidden">
       <div className="shrink-0 px-3 py-1.5 text-center">
         <p className="text-[10px] tracking-[0.12em] text-[var(--muted)] uppercase md:text-[11px]">
           Aralık, 100 kişi alırsa oluşacak fiyat ile 70 kişi alırsa oluşacak fiyat
@@ -38,7 +38,7 @@ export function HomeClient({ initialProducts }: { initialProducts: CatalogProduc
           Fiyatlandırma hakkında detaylı bilgi
         </a>
       </div>
-      <section className="grid min-h-0 flex-1 grid-cols-2 gap-2 p-2 pt-0 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2 p-2 pt-0 md:min-h-0 md:flex-1 md:grid-cols-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
